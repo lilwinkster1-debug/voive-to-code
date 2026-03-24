@@ -1,808 +1,894 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0a0a0f">
-  <title>Voice to Code</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-      background:#0a0a0f;color:#e0e0e0;min-height:100vh;
-      display:flex;flex-direction:column;align-items:center;padding:1.2rem 1rem 3rem;
-    }
-    h1{font-size:1.5rem;font-weight:600;color:#fff}
-    .subtitle{font-size:0.8rem;color:#888;margin-bottom:1rem}
-    .app{width:100%;max-width:720px;display:flex;flex-direction:column;gap:0.7rem}
-
-    /* steps */
-    .steps{display:flex;gap:0.3rem;align-items:center;justify-content:center;margin-bottom:0.4rem}
-    .step-dot{width:8px;height:8px;border-radius:50%;background:#2a2a3a;transition:all 0.3s}
-    .step-dot.active{background:#6c3bff;box-shadow:0 0 8px rgba(108,59,255,0.5)}
-    .step-dot.done{background:#4ade80}
-    .step-line{width:20px;height:2px;background:#2a2a3a}
-    .step-label{font-size:0.65rem;color:#666;margin-left:0.5rem}
-    .step-label.active{color:#aaa}
-
-    /* settings bar */
-    .settings-bar{
-      display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;
-      background:#13131a;border:1px solid #1e1e2a;border-radius:10px;padding:0.5rem 0.7rem;
-    }
-    .settings-bar label{font-size:0.7rem;color:#888;white-space:nowrap}
-    .settings-bar input[type="password"]{
-      flex:1;min-width:140px;background:#0a0a0f;border:1px solid #2a2a3a;border-radius:6px;
-      padding:0.35rem 0.5rem;color:#ccc;font-size:0.75rem;font-family:monospace;
-    }
-    .settings-bar input:focus{outline:none;border-color:#6c3bff}
-    .key-status{font-size:0.7rem;min-width:16px;text-align:center}
-    .divider{width:1px;height:20px;background:#2a2a3a}
-    .settings-bar select{
-      background:#0a0a0f;border:1px solid #2a2a3a;border-radius:6px;
-      padding:0.35rem 0.4rem;color:#ccc;font-size:0.7rem;max-width:160px;
-    }
-    .settings-bar select:focus{outline:none;border-color:#6c3bff}
-    .tts-toggle{
-      background:none;border:1px solid #333;color:#888;font-size:0.7rem;
-      padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;transition:all 0.2s;white-space:nowrap;
-    }
-    .tts-toggle:hover{border-color:#666;color:#ccc}
-    .tts-toggle.on{border-color:#6c3bff;color:#a78bfa;background:rgba(108,59,255,0.1)}
-
-    /* mic */
-    .mic-section{display:flex;flex-direction:column;align-items:center;gap:0.4rem}
-    .mic-container{position:relative}
-    .mic-ring{position:absolute;inset:-8px;border-radius:50%;border:2px solid transparent;transition:border-color 0.3s}
-    .mic-btn{
-      width:70px;height:70px;border-radius:50%;border:none;
-      background:linear-gradient(135deg,#6c3bff,#4f8aff);color:#fff;font-size:1.8rem;
-      cursor:pointer;display:flex;align-items:center;justify-content:center;
-      transition:transform 0.15s,box-shadow 0.3s;box-shadow:0 0 20px rgba(108,59,255,0.3);
-      position:relative;z-index:1;
-    }
-    .mic-btn:hover{transform:scale(1.06)}.mic-btn:active{transform:scale(0.97)}
-    body.listening .mic-btn{background:linear-gradient(135deg,#ff4b6e,#ff6b3b);box-shadow:0 0 30px rgba(255,75,110,0.5);animation:pulse 1.2s ease-in-out infinite}
-    body.listening .mic-ring{border-color:rgba(255,75,110,0.4);animation:ring-pulse 1.2s ease-in-out infinite}
-    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-    @keyframes ring-pulse{0%,100%{inset:-8px;opacity:1}50%{inset:-18px;opacity:0.3}}
-    .status{font-size:0.78rem;color:#888;min-height:1.1em}
-    body.listening .status{color:#ff6b6b}
-
-    /* speaking indicator */
-    .speaking-indicator{
-      display:none;align-items:center;gap:0.4rem;
-      font-size:0.75rem;color:#a78bfa;justify-content:center;padding:0.3rem 0;
-    }
-    .speaking-indicator.active{display:flex}
-    .sound-wave{display:flex;gap:2px;align-items:center;height:14px}
-    .sound-wave span{width:3px;background:#6c3bff;border-radius:2px;animation:wave 0.8s ease-in-out infinite}
-    .sound-wave span:nth-child(1){height:6px;animation-delay:0s}
-    .sound-wave span:nth-child(2){height:10px;animation-delay:0.1s}
-    .sound-wave span:nth-child(3){height:14px;animation-delay:0.2s}
-    .sound-wave span:nth-child(4){height:10px;animation-delay:0.3s}
-    .sound-wave span:nth-child(5){height:6px;animation-delay:0.4s}
-    @keyframes wave{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1)}}
-    .stop-speaking{
-      background:none;border:1px solid #6c3bff;color:#a78bfa;font-size:0.65rem;
-      padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;
-    }
-
-    /* panels */
-    .panel{background:#13131a;border:1px solid #1e1e2a;border-radius:12px;padding:0.8rem;display:flex;flex-direction:column}
-    .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem}
-    .panel-header h2{font-size:0.82rem;font-weight:500;color:#aaa}
-    .small-btn{background:none;border:1px solid #333;color:#888;font-size:0.68rem;padding:0.22rem 0.55rem;border-radius:6px;cursor:pointer;transition:all 0.2s}
-    .small-btn:hover{border-color:#666;color:#ccc}
-    .transcript-text{font-size:0.9rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;min-height:45px;max-height:110px;overflow-y:auto}
-    .transcript-text .interim{color:#666;font-style:italic}
-    .placeholder{color:#444;font-style:italic}
-
-    /* buttons */
-    .action-btn{width:100%;padding:0.6rem;border:none;border-radius:10px;color:#fff;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.2s}
-    .action-btn:hover{opacity:0.9}.action-btn:active{transform:scale(0.98)}.action-btn:disabled{opacity:0.3;cursor:not-allowed}
-    .action-btn.primary{background:linear-gradient(135deg,#6c3bff,#4f8aff)}
-    .action-btn.success{background:linear-gradient(135deg,#22c55e,#16a34a)}
-    .action-btn.warning{background:linear-gradient(135deg,#f59e0b,#d97706)}
-
-    /* chat */
-    .chat-area{display:flex;flex-direction:column;gap:0.5rem;max-height:320px;overflow-y:auto;padding:0.3rem 0}
-    .msg{padding:0.55rem 0.75rem;border-radius:10px;font-size:0.82rem;line-height:1.5;max-width:90%;animation:fadeIn 0.25s ease}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-    .msg.ai{background:#1a1a2e;border:1px solid #2a2a40;color:#d0d0e0;align-self:flex-start}
-    .msg.user{background:#2b1a4e;border:1px solid #3d2a6e;color:#e0d0ff;align-self:flex-end}
-    .msg.system{background:#0d2a1a;border:1px solid #1a4a2a;color:#80d0a0;align-self:center;text-align:center;font-size:0.72rem}
-    .msg .label{font-size:0.58rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.2rem;opacity:0.6}
-
-    /* reply/tweak bars */
-    .reply-bar,.tweak-bar{display:flex;gap:0.4rem;align-items:center}
-    .reply-input,.tweak-input{flex:1;background:#0a0a0f;border:1px solid #2a2a3a;border-radius:8px;padding:0.45rem 0.65rem;color:#e0e0e0;font-size:0.82rem;font-family:inherit}
-    .reply-input:focus,.tweak-input:focus{outline:none;border-color:#6c3bff}
-    .reply-input::placeholder,.tweak-input::placeholder{color:#555}
-    .tweak-input:focus{border-color:#f59e0b}
-    .icon-btn{background:none;border:1px solid #333;color:#888;width:36px;height:36px;border-radius:8px;font-size:0.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
-    .icon-btn:hover{border-color:#666;color:#ccc}
-    .icon-btn.active{border-color:#ff4b6e;color:#ff4b6e}
-    .icon-btn.send{background:linear-gradient(135deg,#6c3bff,#4f8aff);border:none;color:#fff}
-    .icon-btn.send:hover{opacity:0.85}
-
-    /* code output */
-    .file-tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid #2a2a3a}
-    .file-tab{padding:0.45rem 0.8rem;font-size:0.72rem;font-family:monospace;background:#0d0d14;border:1px solid #1e1e2a;border-bottom:none;color:#888;cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0;margin-right:-1px;transition:all 0.2s}
-    .file-tab:hover{color:#ccc;background:#15151f}
-    .file-tab.active{background:#1a1a28;color:#e0e0e0;border-color:#3a3a5a}
-    .file-desc{font-size:0.72rem;color:#888;padding:0.4rem 0.6rem;background:#1a1a28;border-left:1px solid #3a3a5a;border-right:1px solid #3a3a5a;font-style:italic}
-    .code-view{background:#0d1117;border:1px solid #3a3a5a;border-top:none;border-radius:0 0 10px 10px;overflow:auto;max-height:360px}
-    .code-view pre{margin:0;padding:0.7rem;font-size:0.75rem;line-height:1.45}
-    .code-view code{font-family:'SF Mono','Fira Code',Consolas,monospace}
-    .review-actions{display:flex;gap:0.4rem;margin-top:0.4rem;flex-wrap:wrap}
-    .review-actions .action-btn{flex:1;min-width:130px;font-size:0.78rem;padding:0.5rem}
-
-    /* progress */
-    .gen-progress{width:100%;height:3px;background:#1e1e2a;border-radius:2px;overflow:hidden;margin-bottom:0.3rem}
-    .gen-progress-bar{height:100%;background:linear-gradient(90deg,#6c3bff,#4f8aff);width:0%;transition:width 0.5s;animation:shimmer 1.5s ease-in-out infinite}
-    @keyframes shimmer{0%{opacity:0.7}50%{opacity:1}100%{opacity:0.7}}
-
-    /* download */
-    .download-panel{background:#0d2a1a;border:1px solid #1a4a2a;border-radius:10px;padding:0.7rem;text-align:center}
-    .download-panel p{color:#80d0a0;font-size:0.82rem;margin-bottom:0.4rem}
-    .download-links{display:flex;flex-wrap:wrap;gap:0.35rem;justify-content:center}
-    .dl-link{display:inline-block;padding:0.35rem 0.7rem;background:#1a4a2a;border:1px solid #2a6a3a;border-radius:6px;color:#80d0a0;font-size:0.72rem;font-family:monospace;text-decoration:none;cursor:pointer;transition:background 0.2s}
-    .dl-link:hover{background:#2a6a3a}
-
-    /* projects (Layer 5) */
-    .projects-bar{display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap}
-    .project-chip{
-      padding:0.3rem 0.6rem;background:#1a1a2e;border:1px solid #2a2a40;border-radius:6px;
-      color:#aaa;font-size:0.7rem;cursor:pointer;transition:all 0.2s;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;
-    }
-    .project-chip:hover{border-color:#6c3bff;color:#d0d0ff}
-    .project-chip .proj-time{font-size:0.55rem;color:#666;display:block}
-    .project-chip .proj-delete{font-size:0.6rem;color:#666;margin-left:0.3rem;cursor:pointer}
-    .project-chip .proj-delete:hover{color:#ff6b6b}
-
-    .error-banner{background:#2a1015;border:1px solid #4a1520;color:#ff8a8a;padding:0.5rem 0.7rem;border-radius:8px;font-size:0.78rem;display:none}
-    .error-banner.visible{display:block}
-    .loading-dots span{display:inline-block;width:6px;height:6px;margin:0 2px;background:#6c3bff;border-radius:50%;animation:dotBounce 1.2s infinite}
-    .loading-dots span:nth-child(2){animation-delay:0.15s}
-    .loading-dots span:nth-child(3){animation-delay:0.3s}
-    @keyframes dotBounce{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-8px);opacity:1}}
-    .hidden{display:none!important}
-    .footer{margin-top:1rem;font-size:0.6rem;color:#444}
-
-    /* Mobile enhancements */
-    @media(max-width:480px){
-      body{padding:1rem 0.6rem 4rem}
-      h1{font-size:1.3rem}
-      .mic-btn{width:90px;height:90px;font-size:2.2rem}
-      .mic-ring{inset:-10px}
-      .settings-bar{flex-direction:column;align-items:stretch;gap:0.4rem}
-      .settings-bar .divider{display:none}
-      .settings-bar select{max-width:100%}
-      .action-btn{padding:0.75rem;font-size:0.95rem}
-      .icon-btn{width:44px;height:44px;font-size:1.1rem}
-      .reply-input,.tweak-input{font-size:16px} /* prevents iOS zoom on focus */
-      .file-tab{padding:0.5rem 0.7rem;font-size:0.7rem}
-      .code-view{max-height:300px}
-      .project-chip{max-width:100%}
-    }
-    /* Safe area for notched phones */
-    @supports(padding:env(safe-area-inset-bottom)){
-      body{padding-bottom:calc(3rem + env(safe-area-inset-bottom))}
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0f">
+<title>Voice to Code</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp" crossorigin="anonymous"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+background:#0a0a0f;color:#e0e0e0;min-height:100vh;
+display:flex;flex-direction:column;align-items:center;padding:1.2rem 1rem 3rem;
+}
+h1{font-size:1.5rem;font-weight:600;color:#fff}
+.subtitle{font-size:0.8rem;color:#888;margin-bottom:1rem}
+.app{width:100%;max-width:720px;display:flex;flex-direction:column;gap:0.7rem}
+/* steps */
+.steps{display:flex;gap:0.3rem;align-items:center;justify-content:center;margin-bottom:0.4rem}
+.step-dot{width:8px;height:8px;border-radius:50%;background:#2a2a3a;transition:all 0.3s}
+.step-dot.active{background:#6c3bff;box-shadow:0 0 8px rgba(108,59,255,0.5)}
+.step-dot.done{background:#4ade80}
+.step-line{width:20px;height:2px;background:#2a2a3a}
+.step-label{font-size:0.65rem;color:#666;margin-left:0.5rem}
+.step-label.active{color:#aaa}
+/* settings bar */
+.settings-bar{
+display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;
+background:#13131a;border:1px solid #1e1e2a;border-radius:10px;padding:0.5rem 0.7rem;
+}
+.settings-bar label{font-size:0.7rem;color:#888;white-space:nowrap}
+.settings-bar input[type="password"]{
+flex:1;min-width:140px;background:#0a0a0f;border:1px solid #2a2a3a;border-radius:6px;
+padding:0.35rem 0.5rem;color:#ccc;font-size:0.75rem;font-family:monospace;
+}
+.settings-bar input:focus{outline:none;border-color:#6c3bff}
+.key-status{font-size:0.7rem;min-width:16px;text-align:center}
+.divider{width:1px;height:20px;background:#2a2a3a}
+.settings-bar select{
+background:#0a0a0f;border:1px solid #2a2a3a;border-radius:6px;
+padding:0.35rem 0.4rem;color:#ccc;font-size:0.7rem;max-width:160px;
+}
+.settings-bar select:focus{outline:none;border-color:#6c3bff}
+.tts-toggle{
+background:none;border:1px solid #333;color:#888;font-size:0.7rem;
+padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;transition:all 0.2s;white-space:nowrap;
+}
+.tts-toggle:hover{border-color:#666;color:#ccc}
+.tts-toggle.on{border-color:#6c3bff;color:#a78bfa;background:rgba(108,59,255,0.1)}
+/* mic */
+.mic-section{display:flex;flex-direction:column;align-items:center;gap:0.4rem}
+.mic-container{position:relative}
+.mic-ring{position:absolute;inset:-8px;border-radius:50%;border:2px solid transparent;transition:border-color 0.3s}
+.mic-btn{
+width:70px;height:70px;border-radius:50%;border:none;
+background:linear-gradient(135deg,#6c3bff,#4f8aff);color:#fff;font-size:1.8rem;
+cursor:pointer;display:flex;align-items:center;justify-content:center;
+transition:transform 0.15s,box-shadow 0.3s;box-shadow:0 0 20px rgba(108,59,255,0.3);
+position:relative;z-index:1;
+}
+.mic-btn:hover{transform:scale(1.06)}.mic-btn:active{transform:scale(0.97)}
+.mic-btn:focus-visible{outline:2px solid #fff;outline-offset:4px}
+body.listening .mic-btn{background:linear-gradient(135deg,#ff4b6e,#ff6b3b);box-shadow:0 0 30px rgba(255,75,110,0.5);animation:pulse 1.2s ease-in-out infinite}
+body.listening .mic-ring{border-color:rgba(255,75,110,0.4);animation:ring-pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes ring-pulse{0%,100%{inset:-8px;opacity:1}50%{inset:-18px;opacity:0.3}}
+.status{font-size:0.78rem;color:#888;min-height:1.1em}
+body.listening .status{color:#ff6b6b}
+/* speaking indicator */
+.speaking-indicator{
+display:none;align-items:center;gap:0.4rem;
+font-size:0.75rem;color:#a78bfa;justify-content:center;padding:0.3rem 0;
+}
+.speaking-indicator.active{display:flex}
+.sound-wave{display:flex;gap:2px;align-items:center;height:14px}
+.sound-wave span{width:3px;background:#6c3bff;border-radius:2px;animation:wave 0.8s ease-in-out infinite}
+.sound-wave span:nth-child(1){height:6px;animation-delay:0s}
+.sound-wave span:nth-child(2){height:10px;animation-delay:0.1s}
+.sound-wave span:nth-child(3){height:14px;animation-delay:0.2s}
+.sound-wave span:nth-child(4){height:10px;animation-delay:0.3s}
+.sound-wave span:nth-child(5){height:6px;animation-delay:0.4s}
+@keyframes wave{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1)}}
+.stop-speaking{
+background:none;border:1px solid #6c3bff;color:#a78bfa;font-size:0.65rem;
+padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;
+}
+/* panels */
+.panel{background:#13131a;border:1px solid #1e1e2a;border-radius:12px;padding:0.8rem;display:flex;flex-direction:column}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem}
+.panel-header h2{font-size:0.82rem;font-weight:500;color:#aaa}
+.small-btn{background:none;border:1px solid #333;color:#888;font-size:0.68rem;padding:0.22rem 0.55rem;border-radius:6px;cursor:pointer;transition:all 0.2s}
+.small-btn:hover{border-color:#666;color:#ccc}
+.transcript-text{font-size:0.9rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;min-height:45px;max-height:110px;overflow-y:auto}
+.transcript-text .interim{color:#666;font-style:italic}
+.placeholder{color:#777;font-style:italic}
+/* buttons */
+.action-btn{width:100%;padding:0.6rem;border:none;border-radius:10px;color:#fff;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.action-btn:hover{opacity:0.9}.action-btn:active{transform:scale(0.98)}.action-btn:disabled{opacity:0.3;cursor:not-allowed}
+.action-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.action-btn.primary{background:linear-gradient(135deg,#6c3bff,#4f8aff)}
+.action-btn.success{background:linear-gradient(135deg,#22c55e,#16a34a)}
+.action-btn.warning{background:linear-gradient(135deg,#f59e0b,#d97706)}
+/* chat */
+.chat-area{display:flex;flex-direction:column;gap:0.5rem;max-height:320px;overflow-y:auto;padding:0.3rem 0}
+.msg{padding:0.55rem 0.75rem;border-radius:10px;font-size:0.82rem;line-height:1.5;max-width:90%;animation:fadeIn 0.25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.ai{background:#1a1a2e;border:1px solid #2a2a40;color:#d0d0e0;align-self:flex-start}
+.msg.user{background:#2b1a4e;border:1px solid #3d2a6e;color:#e0d0ff;align-self:flex-end}
+.msg.system{background:#0d2a1a;border:1px solid #1a4a2a;color:#80d0a0;align-self:center;text-align:center;font-size:0.72rem}
+.msg .label{font-size:0.58rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.2rem;opacity:0.6}
+/* reply/tweak bars */
+.reply-bar,.tweak-bar{display:flex;gap:0.4rem;align-items:center}
+.reply-input,.tweak-input{flex:1;background:#0a0a0f;border:1px solid #2a2a3a;border-radius:8px;padding:0.45rem 0.65rem;color:#e0e0e0;font-size:0.82rem;font-family:inherit}
+.reply-input:focus,.tweak-input:focus{outline:none;border-color:#6c3bff}
+.reply-input::placeholder,.tweak-input::placeholder{color:#777}
+.tweak-input:focus{border-color:#f59e0b}
+.icon-btn{background:none;border:1px solid #333;color:#888;width:44px;height:44px;border-radius:8px;font-size:0.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.icon-btn:hover{border-color:#666;color:#ccc}
+.icon-btn:focus-visible{outline:2px solid #6c3bff;outline-offset:2px}
+.icon-btn.active{border-color:#ff4b6e;color:#ff4b6e}
+.icon-btn.send{background:linear-gradient(135deg,#6c3bff,#4f8aff);border:none;color:#fff}
+.icon-btn.send:hover{opacity:0.85}
+/* code output */
+.file-tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid #2a2a3a}
+.file-tab{padding:0.45rem 0.8rem;font-size:0.72rem;font-family:monospace;background:#0d0d14;border:1px solid #1e1e2a;border-bottom:none;color:#888;cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0;margin-right:-1px;transition:all 0.2s}
+.file-tab:hover{color:#ccc;background:#15151f}
+.file-tab.active{background:#1a1a28;color:#e0e0e0;border-color:#3a3a5a}
+.file-desc{font-size:0.72rem;color:#888;padding:0.4rem 0.6rem;background:#1a1a28;border-left:1px solid #3a3a5a;border-right:1px solid #3a3a5a;font-style:italic}
+.code-view{background:#0d1117;border:1px solid #3a3a5a;border-top:none;border-radius:0 0 10px 10px;overflow:auto;max-height:360px}
+.code-view pre{margin:0;padding:0.7rem;font-size:0.75rem;line-height:1.45}
+.code-view code{font-family:'SF Mono','Fira Code',Consolas,monospace}
+.review-actions{display:flex;gap:0.4rem;margin-top:0.4rem;flex-wrap:wrap}
+.review-actions .action-btn{flex:1;min-width:130px;font-size:0.78rem;padding:0.5rem}
+/* progress */
+.gen-progress{width:100%;height:3px;background:#1e1e2a;border-radius:2px;overflow:hidden;margin-bottom:0.3rem}
+.gen-progress-bar{height:100%;background:linear-gradient(90deg,#6c3bff,#4f8aff);width:0%;transition:width 0.5s;animation:shimmer 1.5s ease-in-out infinite}
+@keyframes shimmer{0%{opacity:0.7}50%{opacity:1}100%{opacity:0.7}}
+/* download */
+.download-panel{background:#0d2a1a;border:1px solid #1a4a2a;border-radius:10px;padding:0.7rem;text-align:center}
+.download-panel p{color:#80d0a0;font-size:0.82rem;margin-bottom:0.4rem}
+.download-links{display:flex;flex-wrap:wrap;gap:0.35rem;justify-content:center}
+.dl-link{display:inline-block;padding:0.35rem 0.7rem;background:#1a4a2a;border:1px solid #2a6a3a;border-radius:6px;color:#80d0a0;font-size:0.72rem;font-family:monospace;text-decoration:none;cursor:pointer;transition:background 0.2s}
+.dl-link:hover{background:#2a6a3a}
+/* projects (Layer 5) */
+.projects-bar{display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap}
+.project-chip{
+padding:0.3rem 0.6rem;background:#1a1a2e;border:1px solid #2a2a40;border-radius:6px;
+color:#aaa;font-size:0.7rem;cursor:pointer;transition:all 0.2s;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;
+}
+.project-chip:hover{border-color:#6c3bff;color:#d0d0ff}
+.project-chip .proj-time{font-size:0.55rem;color:#666;display:block}
+.project-chip .proj-delete{font-size:0.6rem;color:#666;margin-left:0.3rem;cursor:pointer}
+.project-chip .proj-delete:hover{color:#ff6b6b}
+.error-banner{background:#2a1015;border:1px solid #4a1520;color:#ff8a8a;padding:0.5rem 0.7rem;border-radius:8px;font-size:0.78rem;display:none}
+.error-banner.visible{display:block}
+.loading-dots span{display:inline-block;width:6px;height:6px;margin:0 2px;background:#6c3bff;border-radius:50%;animation:dotBounce 1.2s infinite}
+.loading-dots span:nth-child(2){animation-delay:0.15s}
+.loading-dots span:nth-child(3){animation-delay:0.3s}
+@keyframes dotBounce{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-8px);opacity:1}}
+.hidden{display:none!important}
+.footer{margin-top:1rem;font-size:0.6rem;color:#444}
+/* Mobile enhancements */
+@media(max-width:480px){
+body{padding:1rem 0.6rem 4rem}
+h1{font-size:1.3rem}
+.mic-btn{width:90px;height:90px;font-size:2.2rem}
+.mic-ring{inset:-10px}
+.settings-bar{flex-direction:column;align-items:stretch;gap:0.4rem}
+.settings-bar .divider{display:none}
+.settings-bar select{max-width:100%}
+.action-btn{padding:0.75rem;font-size:0.95rem}
+.icon-btn{width:44px;height:44px;font-size:1.1rem}
+.reply-input,.tweak-input{font-size:16px} /* prevents iOS zoom on focus */
+.file-tab{padding:0.5rem 0.7rem;font-size:0.7rem}
+.code-view{max-height:300px}
+.project-chip{max-width:100%}
+}
+/* Safe area for notched phones */
+@supports(padding:env(safe-area-inset-bottom)){
+body{padding-bottom:calc(3rem + env(safe-area-inset-bottom))}
+}
+</style>
 </head>
 <body>
 <h1>Voice to Code</h1>
 <p class="subtitle">Speak it. Clarify it. Build it. Review it. Save it.</p>
-
 <div class="steps" id="steps">
-  <div class="step-dot active" data-step="0"></div><div class="step-line"></div>
-  <div class="step-dot" data-step="1"></div><div class="step-line"></div>
-  <div class="step-dot" data-step="2"></div><div class="step-line"></div>
-  <div class="step-dot" data-step="3"></div><div class="step-line"></div>
-  <div class="step-dot" data-step="4"></div>
-  <span class="step-label active" id="stepLabel">Voice Input</span>
+<div class="step-dot active" data-step="0"></div><div class="step-line"></div>
+<div class="step-dot" data-step="1"></div><div class="step-line"></div>
+<div class="step-dot" data-step="2"></div><div class="step-line"></div>
+<div class="step-dot" data-step="3"></div><div class="step-line"></div>
+<div class="step-dot" data-step="4"></div>
+<span class="step-label active" id="stepLabel">Voice Input</span>
 </div>
-
 <div class="app">
-
-  <!-- Settings -->
-  <div class="settings-bar">
-    <label for="apiKey">Key</label>
-    <input type="password" id="apiKey" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false">
-    <span class="key-status" id="keyStatus"></span>
-    <div class="divider"></div>
-    <label>Voice</label>
-    <select id="voiceSelect"><option value="">Loading…</option></select>
-    <button class="tts-toggle on" id="ttsToggle">TTS On</button>
-  </div>
-
-  <!-- Saved Projects (Layer 5) -->
-  <div class="panel" id="projectsPanel">
-    <div class="panel-header">
-      <h2>Saved Projects</h2>
-      <button class="small-btn" id="clearProjectsBtn">Clear All</button>
-    </div>
-    <div class="projects-bar" id="projectsList">
-      <span class="placeholder" id="noProjects">No saved projects yet</span>
-    </div>
-  </div>
-
-  <!-- Mic -->
-  <div class="mic-section">
-    <div class="mic-container">
-      <div class="mic-ring"></div>
-      <button class="mic-btn" id="micBtn" aria-label="Start listening">🎙️</button>
-    </div>
-    <p class="status" id="status">Tap the mic and speak your idea</p>
-  </div>
-
-  <!-- Speaking indicator -->
-  <div class="speaking-indicator" id="speakingIndicator">
-    <div class="sound-wave"><span></span><span></span><span></span><span></span><span></span></div>
-    <span>Claude is speaking…</span>
-    <button class="stop-speaking" id="stopSpeaking">Stop</button>
-  </div>
-
-  <!-- Error -->
-  <div class="error-banner" id="error"></div>
-
-  <!-- Transcript -->
-  <div class="panel" id="transcriptPanel">
-    <div class="panel-header">
-      <h2>Your Idea</h2>
-      <button class="small-btn" id="clearBtn">Clear</button>
-    </div>
-    <div class="transcript-text" id="transcript">
-      <span class="placeholder">Your words will appear here…</span>
-    </div>
-  </div>
-
-  <button class="action-btn primary" id="sendBtn" disabled>Send to Claude for Clarification</button>
-
-  <!-- Clarification Chat -->
-  <div class="panel hidden" id="chatPanel">
-    <div class="panel-header">
-      <h2>Clarification Chat</h2>
-      <button class="small-btn" id="resetChat">New Idea</button>
-    </div>
-    <div class="chat-area" id="chatArea"></div>
-    <div class="reply-bar hidden" id="replyBar">
-      <button class="icon-btn" id="replyMicBtn" aria-label="Voice reply">🎙️</button>
-      <input type="text" class="reply-input" id="replyInput" placeholder="Type or tap mic to answer…">
-      <button class="icon-btn send" id="replySend" aria-label="Send reply">➤</button>
-    </div>
-  </div>
-
-  <button class="action-btn success hidden" id="generateBtn">Generate Code</button>
-
-  <!-- Code Panel -->
-  <div class="panel hidden" id="codePanel">
-    <div class="panel-header">
-      <h2>Generated Code</h2>
-      <div style="display:flex;gap:0.3rem">
-        <button class="small-btn" id="downloadAllBtn">Download All</button>
-        <button class="small-btn" id="resetChat2">New Idea</button>
-      </div>
-    </div>
-    <div class="gen-progress hidden" id="genProgress"><div class="gen-progress-bar" id="genProgressBar"></div></div>
-    <p class="status hidden" id="genStatus" style="text-align:center;margin-bottom:0.4rem"></p>
-    <div class="code-output hidden" id="codeOutput">
-      <div class="file-tabs" id="fileTabs"></div>
-      <div class="file-desc" id="fileDesc"></div>
-      <div class="code-view" id="codeView"><pre><code id="codeContent"></code></pre></div>
-      <div class="review-actions">
-        <button class="action-btn success" id="approveBtn">Approve & Save</button>
-        <button class="action-btn warning" id="tweakBtn">Request Tweak</button>
-      </div>
-      <div class="tweak-bar hidden" id="tweakBar">
-        <button class="icon-btn" id="tweakMicBtn" aria-label="Voice tweak">🎙️</button>
-        <input type="text" class="tweak-input" id="tweakInput" placeholder="Describe what to change…">
-        <button class="icon-btn send" id="tweakSend" aria-label="Send tweak">➤</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Download panel -->
-  <div class="download-panel hidden" id="downloadPanel">
-    <p>Project saved & approved! Download your files:</p>
-    <div class="download-links" id="downloadLinks"></div>
-  </div>
-
+<!-- Settings -->
+<div class="settings-bar">
+<label for="apiKey">Key</label>
+<input type="password" id="apiKey" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false">
+<span class="key-status" id="keyStatus"></span>
+<div class="divider"></div>
+<label>Voice</label>
+<select id="voiceSelect"><option value="">Loading…</option></select>
+<button class="tts-toggle on" id="ttsToggle">TTS On</button>
+</div>
+<!-- Saved Projects (Layer 5) -->
+<div class="panel" id="projectsPanel">
+<div class="panel-header">
+<h2>Saved Projects</h2>
+<button class="small-btn" id="clearProjectsBtn">Clear All</button>
+</div>
+<div class="projects-bar" id="projectsList">
+<span class="placeholder" id="noProjects">No saved projects yet</span>
+</div>
+</div>
+<!-- Mic -->
+<div class="mic-section">
+<div class="mic-container">
+<div class="mic-ring"></div>
+<button class="mic-btn" id="micBtn" aria-label="Start listening">🎙️</button>
+</div>
+<p class="status" id="status">Tap the mic and speak your idea</p>
+</div>
+<!-- Speaking indicator -->
+<div class="speaking-indicator" id="speakingIndicator">
+<div class="sound-wave"><span></span><span></span><span></span><span></span><span></span></div>
+<span>Claude is speaking…</span>
+<button class="stop-speaking" id="stopSpeaking">Stop</button>
+</div>
+<!-- Error -->
+<div class="error-banner" id="error"></div>
+<!-- Transcript -->
+<div class="panel" id="transcriptPanel">
+<div class="panel-header">
+<h2>Your Idea</h2>
+<button class="small-btn" id="clearBtn">Clear</button>
+</div>
+<div class="transcript-text" id="transcript">
+<span class="placeholder">Your words will appear here…</span>
+</div>
+</div>
+<button class="action-btn primary" id="sendBtn" disabled>Send to Claude for Clarification</button>
+<!-- Clarification Chat -->
+<div class="panel hidden" id="chatPanel">
+<div class="panel-header">
+<h2>Clarification Chat</h2>
+<button class="small-btn" id="resetChat">New Idea</button>
+</div>
+<div class="chat-area" id="chatArea"></div>
+<div class="reply-bar hidden" id="replyBar">
+<button class="icon-btn" id="replyMicBtn" aria-label="Voice reply">🎙️</button>
+<input type="text" class="reply-input" id="replyInput" placeholder="Type or tap mic to answer…">
+<button class="icon-btn send" id="replySend" aria-label="Send reply">➤</button>
+</div>
+</div>
+<button class="action-btn success hidden" id="generateBtn">Generate Code</button>
+<!-- Code Panel -->
+<div class="panel hidden" id="codePanel">
+<div class="panel-header">
+<h2>Generated Code</h2>
+<div style="display:flex;gap:0.3rem">
+<button class="small-btn" id="downloadAllBtn">Download All</button>
+<button class="small-btn" id="resetChat2">New Idea</button>
+</div>
+</div>
+<div class="gen-progress hidden" id="genProgress"><div class="gen-progress-bar" id="genProgressBar"></div></div>
+<p class="status hidden" id="genStatus" style="text-align:center;margin-bottom:0.4rem"></p>
+<div class="code-output hidden" id="codeOutput">
+<div class="file-tabs" id="fileTabs"></div>
+<div class="file-desc" id="fileDesc"></div>
+<div class="code-view" id="codeView"><pre><code id="codeContent"></code></pre></div>
+<div class="review-actions">
+<button class="action-btn success" id="approveBtn">Approve & Save</button>
+<button class="action-btn warning" id="tweakBtn">Request Tweak</button>
+</div>
+<div class="tweak-bar hidden" id="tweakBar">
+<button class="icon-btn" id="tweakMicBtn" aria-label="Voice tweak">🎙️</button>
+<input type="text" class="tweak-input" id="tweakInput" placeholder="Describe what to change…">
+<button class="icon-btn send" id="tweakSend" aria-label="Send tweak">➤</button>
+</div>
+</div>
+</div>
+<!-- Download panel -->
+<div class="download-panel hidden" id="downloadPanel">
+<p>Project saved & approved! Download your files:</p>
+<div class="download-links" id="downloadLinks"></div>
+</div>
 </div>
 <p class="footer">Voice to Code · All Layers · Web Speech API + Claude + IndexedDB</p>
-
 <script>
 (function(){
-  // ===== ELEMENTS =====
-  const $=id=>document.getElementById(id);
-  const apiKeyInput=$('apiKey'),keyStatus=$('keyStatus'),micBtn=$('micBtn'),statusEl=$('status'),
-    errorEl=$('error'),transcriptEl=$('transcript'),clearBtn=$('clearBtn'),sendBtn=$('sendBtn'),
-    chatPanel=$('chatPanel'),chatArea=$('chatArea'),replyBar=$('replyBar'),replyInput=$('replyInput'),
-    replySend=$('replySend'),replyMicBtn=$('replyMicBtn'),resetChat=$('resetChat'),resetChat2=$('resetChat2'),
-    generateBtn=$('generateBtn'),codePanel=$('codePanel'),genProgress=$('genProgress'),
-    genProgressBar=$('genProgressBar'),genStatus=$('genStatus'),codeOutput=$('codeOutput'),
-    fileTabs=$('fileTabs'),fileDesc=$('fileDesc'),codeContent=$('codeContent'),
-    approveBtn=$('approveBtn'),tweakBtn=$('tweakBtn'),tweakBar=$('tweakBar'),
-    tweakInput=$('tweakInput'),tweakSend=$('tweakSend'),tweakMicBtn=$('tweakMicBtn'),
-    downloadAllBtn=$('downloadAllBtn'),downloadPanel=$('downloadPanel'),downloadLinks=$('downloadLinks'),
-    stepLabel=$('stepLabel'),voiceSelect=$('voiceSelect'),ttsToggle=$('ttsToggle'),
-    speakingIndicator=$('speakingIndicator'),stopSpeakingBtn=$('stopSpeaking'),
-    projectsList=$('projectsList'),noProjects=$('noProjects'),clearProjectsBtn=$('clearProjectsBtn');
+// ===== ELEMENTS =====
+const $=id=>document.getElementById(id);
+const apiKeyInput=$('apiKey'),keyStatus=$('keyStatus'),micBtn=$('micBtn'),statusEl=$('status'),
+errorEl=$('error'),transcriptEl=$('transcript'),clearBtn=$('clearBtn'),sendBtn=$('sendBtn'),
+chatPanel=$('chatPanel'),chatArea=$('chatArea'),replyBar=$('replyBar'),replyInput=$('replyInput'),
+replySend=$('replySend'),replyMicBtn=$('replyMicBtn'),resetChat=$('resetChat'),resetChat2=$('resetChat2'),
+generateBtn=$('generateBtn'),codePanel=$('codePanel'),genProgress=$('genProgress'),
+genProgressBar=$('genProgressBar'),genStatus=$('genStatus'),codeOutput=$('codeOutput'),
+fileTabs=$('fileTabs'),fileDesc=$('fileDesc'),codeContent=$('codeContent'),
+approveBtn=$('approveBtn'),tweakBtn=$('tweakBtn'),tweakBar=$('tweakBar'),
+tweakInput=$('tweakInput'),tweakSend=$('tweakSend'),tweakMicBtn=$('tweakMicBtn'),
+downloadAllBtn=$('downloadAllBtn'),downloadPanel=$('downloadPanel'),downloadLinks=$('downloadLinks'),
+stepLabel=$('stepLabel'),voiceSelect=$('voiceSelect'),ttsToggle=$('ttsToggle'),
+speakingIndicator=$('speakingIndicator'),stopSpeakingBtn=$('stopSpeaking'),
+projectsList=$('projectsList'),noProjects=$('noProjects'),clearProjectsBtn=$('clearProjectsBtn');
 
-  // ===== STATE =====
-  let finalText='',listening=false,replyListening=false,tweakListening=false;
-  let conversationHistory=[],codeGenHistory=[],awaitingReply=false;
-  let generatedFiles=[],activeFileIdx=0,clarifiedRequirements='',currentStep=0;
-  let ttsEnabled=true,isSpeaking=false;
-  let savedProjects=[];
+// ===== STATE =====
+let finalText=’’,listening=false,replyListening=false,tweakListening=false;
+let conversationHistory=[],codeGenHistory=[],awaitingReply=false;
+let generatedFiles=[],activeFileIdx=0,clarifiedRequirements=’’,currentStep=0;
+let ttsEnabled=true,isSpeaking=false;
+let savedProjects=[];
+const STEP_NAMES=[‘Voice Input’,‘Clarification’,‘Code Generation’,‘Review’,‘Saved’];
 
-  const STEP_NAMES=['Voice Input','Clarification','Code Generation','Review','Saved'];
+function setStep(n){
+currentStep=n;
+document.querySelectorAll(’.step-dot’).forEach((d,i)=>{
+d.classList.remove(‘active’,‘done’);
+if(i<n)d.classList.add(‘done’);else if(i===n)d.classList.add(‘active’);
+});
+stepLabel.textContent=STEP_NAMES[n]||’’;
+}
 
-  function setStep(n){
-    currentStep=n;
-    document.querySelectorAll('.step-dot').forEach((d,i)=>{
-      d.classList.remove('active','done');
-      if(i<n)d.classList.add('done');else if(i===n)d.classList.add('active');
-    });
-    stepLabel.textContent=STEP_NAMES[n]||'';
-  }
+// ===== TEXT-TO-SPEECH =====
+const synth=window.speechSynthesis;
+let voices=[];
+function loadVoices(){
+voices=synth.getVoices();
+voiceSelect.innerHTML=’’;
+if(!voices.length){voiceSelect.innerHTML=’<option>No voices</option>’;return;}
+const en=voices.filter(v=>v.lang.startsWith(‘en’));
+const other=voices.filter(v=>!v.lang.startsWith(‘en’));
+const sorted=[…en,…other];
+sorted.forEach((v,i)=>{
+const opt=document.createElement(‘option’);
+opt.value=voices.indexOf(v);
+opt.textContent=`${v.name} (${v.lang})`;
+if(v.default)opt.selected=true;
+voiceSelect.appendChild(opt);
+});
+}
+if(synth){loadVoices();synth.onvoiceschanged=loadVoices;}
 
-  // ===== TEXT-TO-SPEECH =====
-  const synth=window.speechSynthesis;
-  let voices=[];
+function speak(text){
+if(!ttsEnabled||!synth||!text)return;
+synth.cancel();
+const clean=text.replace(/✅\s*READY TO BUILD/g,‘Ready to build.’)
+.replace(/[^\w\s.,!?;:’-()/]/g,’ ‘).replace(/\s+/g,’ ‘).trim();
+if(!clean)return;
+const utt=new SpeechSynthesisUtterance(clean);
+const idx=parseInt(voiceSelect.value);
+if(voices[idx])utt.voice=voices[idx];
+utt.rate=1.0;utt.pitch=1.0;
+utt.onstart=()=>{isSpeaking=true;speakingIndicator.classList.add(‘active’);};
+utt.onend=()=>{isSpeaking=false;speakingIndicator.classList.remove(‘active’);};
+utt.onerror=()=>{isSpeaking=false;speakingIndicator.classList.remove(‘active’);};
+if(clean.length>200){
+const sentences=clean.match(/[^.!?]+[.!?]+/g)||[clean];
+let first=true;
+sentences.forEach(s=>{
+const u=new SpeechSynthesisUtterance(s.trim());
+if(voices[idx])u.voice=voices[idx];
+u.rate=1.0;u.pitch=1.0;
+if(first){u.onstart=()=>{isSpeaking=true;speakingIndicator.classList.add(‘active’)};first=false;}
+synth.speak(u);
+});
+const lastU=new SpeechSynthesisUtterance(’’);
+lastU.onend=()=>{isSpeaking=false;speakingIndicator.classList.remove(‘active’)};
+synth.speak(lastU);
+} else {
+synth.speak(utt);
+}
+}
 
-  function loadVoices(){
-    voices=synth.getVoices();
-    voiceSelect.innerHTML='';
-    if(!voices.length){voiceSelect.innerHTML='<option>No voices</option>';return;}
-    // Group and sort: English first, then others
-    const en=voices.filter(v=>v.lang.startsWith('en'));
-    const other=voices.filter(v=>!v.lang.startsWith('en'));
-    const sorted=[...en,...other];
-    sorted.forEach((v,i)=>{
-      const opt=document.createElement('option');
-      opt.value=voices.indexOf(v);
-      opt.textContent=`${v.name} (${v.lang})`;
-      if(v.default)opt.selected=true;
-      voiceSelect.appendChild(opt);
-    });
-  }
-  if(synth){
-    loadVoices();
-    synth.onvoiceschanged=loadVoices;
-  }
+ttsToggle.addEventListener(‘click’,()=>{
+ttsEnabled=!ttsEnabled;
+ttsToggle.textContent=ttsEnabled?‘TTS On’:‘TTS Off’;
+ttsToggle.classList.toggle(‘on’,ttsEnabled);
+if(!ttsEnabled&&synth){synth.cancel();isSpeaking=false;speakingIndicator.classList.remove(‘active’);}
+});
+stopSpeakingBtn.addEventListener(‘click’,()=>{
+if(synth)synth.cancel();
+isSpeaking=false;speakingIndicator.classList.remove(‘active’);
+});
 
-  function speak(text){
-    if(!ttsEnabled||!synth||!text)return;
-    synth.cancel();
-    // Clean text for speech — remove emojis, code markers, etc.
-    const clean=text.replace(/✅\s*READY TO BUILD/g,'Ready to build.')
-      .replace(/[^\w\s.,!?;:'\-()\/]/g,' ').replace(/\s+/g,' ').trim();
-    if(!clean)return;
+// ===== SPEECH RECOGNITION =====
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){showError(“Browser doesn’t support Web Speech API. Try Chrome, Edge, or Safari.”);micBtn.disabled=true;micBtn.style.opacity=‘0.4’;return;}
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 
-    const utt=new SpeechSynthesisUtterance(clean);
-    const idx=parseInt(voiceSelect.value);
-    if(voices[idx])utt.voice=voices[idx];
-    utt.rate=1.0;utt.pitch=1.0;
+function mkRec(){const r=new SR();r.continuous=!isIOS;r.interimResults=true;r.lang=‘en-US’;return r;}
+const recognition=mkRec(),replyRec=mkRec(),tweakRec=mkRec();
 
-    utt.onstart=()=>{isSpeaking=true;speakingIndicator.classList.add('active');};
-    utt.onend=()=>{isSpeaking=false;speakingIndicator.classList.remove('active');};
-    utt.onerror=()=>{isSpeaking=false;speakingIndicator.classList.remove('active');};
+// API key
+apiKeyInput.addEventListener(‘input’,()=>{
+const v=apiKeyInput.value.trim();
+if(v.startsWith(‘sk-ant-’)){keyStatus.textContent=‘✓’;keyStatus.style.color=’#4ade80’;}
+else if(v.length>0){keyStatus.textContent=’?’;keyStatus.style.color=’#f0ad4e’;}
+else keyStatus.textContent=’’;
+updateSendBtn();
+});
 
-    // Chrome bug: long utterances cut off. Split into chunks.
-    if(clean.length>200){
-      const sentences=clean.match(/[^.!?]+[.!?]+/g)||[clean];
-      let first=true;
-      sentences.forEach(s=>{
-        const u=new SpeechSynthesisUtterance(s.trim());
-        if(voices[idx])u.voice=voices[idx];
-        u.rate=1.0;u.pitch=1.0;
-        if(first){u.onstart=()=>{isSpeaking=true;speakingIndicator.classList.add('active')};first=false;}
-        synth.speak(u);
-      });
-      // Mark end on last utterance
-      const lastU=new SpeechSynthesisUtterance('');
-      lastU.onend=()=>{isSpeaking=false;speakingIndicator.classList.remove('active')};
-      synth.speak(lastU);
-    } else {
-      synth.speak(utt);
-    }
-  }
+// ===== MAIN MIC — FIXED FOR iOS =====
+let wantListening=false;
 
-  ttsToggle.addEventListener('click',()=>{
-    ttsEnabled=!ttsEnabled;
-    ttsToggle.textContent=ttsEnabled?'TTS On':'TTS Off';
-    ttsToggle.classList.toggle('on',ttsEnabled);
-    if(!ttsEnabled&&synth){synth.cancel();isSpeaking=false;speakingIndicator.classList.remove('active');}
-  });
+// Helper to fully clean up listening state
+function stopListeningCleanup(){
+listening=false;
+wantListening=false;
+document.body.classList.remove(‘listening’);
+statusEl.textContent=finalText.trim()?‘Done — tap Send below’:‘Tap the mic and speak your idea’;
+updateSendBtn();
+}
 
-  stopSpeakingBtn.addEventListener('click',()=>{
-    if(synth)synth.cancel();
-    isSpeaking=false;speakingIndicator.classList.remove('active');
-  });
+micBtn.addEventListener(‘click’,()=>{
+if(isSpeaking&&synth)synth.cancel();
+if(listening||wantListening){
+// User wants to STOP
+wantListening=false;
+try{recognition.stop();}catch(e){}
+// Safety net: if stop() doesn’t trigger end/error events (rare edge case), force cleanup
+setTimeout(()=>{
+if(listening){stopListeningCleanup();}
+},500);
+} else {
+// User wants to START
+if(transcriptEl.querySelector(’.placeholder’))transcriptEl.innerHTML=’’;
+hideError();
+wantListening=true;
+try{recognition.start();}catch(e){
+// Already running somehow — stop and retry
+try{recognition.stop();}catch(e2){}
+setTimeout(()=>{try{recognition.start();}catch(e3){showError(’Could not start mic: ’+e3.message);}},200);
+}
+}
+});
 
-  // ===== SPEECH RECOGNITION =====
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){showError("Browser doesn't support Web Speech API. Try Chrome, Edge, or Safari.");micBtn.disabled=true;micBtn.style.opacity='0.4';return;}
-  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-  function mkRec(){const r=new SR();r.continuous=!isIOS;r.interimResults=true;r.lang='en-US';return r;}
-  const recognition=mkRec(),replyRec=mkRec(),tweakRec=mkRec();
+recognition.addEventListener(‘start’,()=>{
+listening=true;
+document.body.classList.add(‘listening’);
+statusEl.textContent=‘Listening…’;
+});
 
-  // API key
-  apiKeyInput.addEventListener('input',()=>{
-    const v=apiKeyInput.value.trim();
-    if(v.startsWith('sk-ant-')){keyStatus.textContent='✓';keyStatus.style.color='#4ade80';}
-    else if(v.length>0){keyStatus.textContent='?';keyStatus.style.color='#f0ad4e';}
-    else keyStatus.textContent='';
-    updateSendBtn();
-  });
+recognition.addEventListener(‘end’,()=>{
+listening=false;
+document.body.classList.remove(‘listening’);
+// iOS auto-restart: only if user still wants to listen
+if(isIOS&&wantListening){
+try{recognition.start();}catch(e){
+// Failed to restart — clean up gracefully
+stopListeningCleanup();
+}
+} else {
+stopListeningCleanup();
+}
+});
 
-  // Main mic
-  micBtn.addEventListener('click',()=>{
-    if(isSpeaking&&synth)synth.cancel();
-    if(listening){wantListening=false;recognition.stop();}
-    else{if(transcriptEl.querySelector('.placeholder'))transcriptEl.innerHTML='';hideError();wantListening=true;recognition.start();}
-  });
-  recognition.addEventListener('start',()=>{listening=true;document.body.classList.add('listening');statusEl.textContent='Listening…';});
-  let wantListening=false;
-  recognition.addEventListener('end',()=>{
-    listening=false;document.body.classList.remove('listening');
-    // iOS stops after each phrase — auto-restart if user hasn't tapped stop
-    if(isIOS&&wantListening){try{recognition.start();}catch(e){}}
-    else{wantListening=false;statusEl.textContent='Tap the mic and speak your idea';updateSendBtn();}
-  });
-  recognition.addEventListener('result',e=>{
-    let interim='',acc='';
-    for(let i=0;i<e.results.length;i++){if(e.results[i].isFinal)acc+=e.results[i][0].transcript+' ';else interim+=e.results[i][0].transcript;}
-    if(acc)finalText+=acc;
-    transcriptEl.innerHTML='';
-    if(finalText){const s=document.createElement('span');s.textContent=finalText;transcriptEl.appendChild(s);}
-    if(interim){const s=document.createElement('span');s.className='interim';s.textContent=interim;transcriptEl.appendChild(s);}
-    transcriptEl.scrollTop=transcriptEl.scrollHeight;updateSendBtn();
-  });
-  recognition.addEventListener('error',e=>{
-    if(e.error==='no-speech')statusEl.textContent='No speech detected — try again';
-    else if(e.error==='not-allowed')showError('Microphone access denied.');
-    else showError('Speech error: '+e.error);
-  });
+recognition.addEventListener(‘result’,e=>{
+let interim=’’,acc=’’;
+for(let i=0;i<e.results.length;i++){
+if(e.results[i].isFinal)acc+=e.results[i][0].transcript+’ ‘;
+else interim+=e.results[i][0].transcript;
+}
+if(acc)finalText+=acc;
+transcriptEl.innerHTML=’’;
+if(finalText){const s=document.createElement(‘span’);s.textContent=finalText;transcriptEl.appendChild(s);}
+if(interim){const s=document.createElement(‘span’);s.className=‘interim’;s.textContent=interim;transcriptEl.appendChild(s);}
+transcriptEl.scrollTop=transcriptEl.scrollHeight;
+updateSendBtn();
+});
 
-  // Reply mic
-  function wireVoiceReply(btn,rec,input){
-    let rl=false;
-    btn.addEventListener('click',()=>{if(isSpeaking&&synth)synth.cancel();if(rl)rec.stop();else rec.start();});
-    rec.addEventListener('start',()=>{rl=true;btn.classList.add('active');});
-    rec.addEventListener('end',()=>{rl=false;btn.classList.remove('active');});
-    rec.addEventListener('result',e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;input.value=t;});
-    rec.addEventListener('error',()=>{rl=false;btn.classList.remove('active');});
-    return{isListening:()=>rl,stop:()=>rec.stop()};
-  }
-  const replyVoice=wireVoiceReply(replyMicBtn,replyRec,replyInput);
-  const tweakVoice=wireVoiceReply(tweakMicBtn,tweakRec,tweakInput);
+recognition.addEventListener(‘error’,e=>{
+// === FIX: Always clean up state on ANY error ===
+// On iOS, ‘no-speech’ and ‘aborted’ fire when stopping an auto-restarted session.
+// Previously, these errors could leave the app in a broken state where the send
+// button stayed disabled because the ‘end’ event didn’t fire after the error.
+if(e.error===‘no-speech’){
+// Normal on iOS when auto-restarted session gets stopped before new speech — ignore silently
+} else if(e.error===‘aborted’){
+// Normal when manually stopping recognition — ignore silently
+} else if(e.error===‘not-allowed’){
+showError(‘Microphone access denied. Check your browser settings.’);
+} else {
+showError(’Speech error: ‘+e.error);
+}
+// CRITICAL: Always reset state so the UI doesn’t get stuck.
+// On iOS, the ‘end’ event sometimes does NOT fire after certain errors.
+listening=false;
+wantListening=false;
+document.body.classList.remove(‘listening’);
+statusEl.textContent=finalText.trim()?‘Done — tap Send below’:‘Tap the mic and speak your idea’;
+updateSendBtn();
+});
 
-  clearBtn.addEventListener('click',()=>{finalText='';transcriptEl.innerHTML='<span class="placeholder">Your words will appear here…</span>';updateSendBtn();});
-  function updateSendBtn(){sendBtn.disabled=!(finalText.trim()&&apiKeyInput.value.trim());}
+// ===== REPLY/TWEAK MIC — ALSO FIXED FOR iOS =====
+function wireVoiceReply(btn,rec,input){
+let rl=false,rlWant=false;
 
-  // ===== CLARIFICATION =====
-  const CLARIFY_PROMPT=`You are the clarification layer of a voice-to-code system. The user speaks an idea for a program, app, or script, and your ONLY job is to make sure the requirements are crystal clear before any code is generated.
+btn.addEventListener(‘click’,()=>{
+if(isSpeaking&&synth)synth.cancel();
+if(rl||rlWant){
+rlWant=false;
+try{rec.stop();}catch(e){}
+// Safety timeout
+setTimeout(()=>{if(rl){rl=false;btn.classList.remove(‘active’);}},500);
+} else {
+rlWant=true;
+try{rec.start();}catch(e){rlWant=false;}
+}
+});
+
+rec.addEventListener(‘start’,()=>{rl=true;rlWant=true;btn.classList.add(‘active’);});
+
+rec.addEventListener(‘end’,()=>{
+rl=false;
+btn.classList.remove(‘active’);
+// iOS auto-restart for reply/tweak mics
+if(isIOS&&rlWant){
+try{rec.start();}catch(e){rlWant=false;}
+} else {
+rlWant=false;
+}
+});
+
+rec.addEventListener(‘result’,e=>{
+let t=’’;
+for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;
+input.value=t;
+});
+
+rec.addEventListener(‘error’,e=>{
+// FIX: Always clean up on any error (same iOS issue as main mic)
+rl=false;
+rlWant=false;
+btn.classList.remove(‘active’);
+});
+
+return{isListening:()=>rl,stop:()=>{rlWant=false;try{rec.stop();}catch(e){}}};
+}
+
+const replyVoice=wireVoiceReply(replyMicBtn,replyRec,replyInput);
+const tweakVoice=wireVoiceReply(tweakMicBtn,tweakRec,tweakInput);
+
+clearBtn.addEventListener(‘click’,()=>{finalText=’’;transcriptEl.innerHTML=’<span class="placeholder">Your words will appear here…</span>’;updateSendBtn();});
+function updateSendBtn(){sendBtn.disabled=!(finalText.trim()&&apiKeyInput.value.trim());}
+
+// ===== CLARIFICATION =====
+const CLARIFY_PROMPT=`You are the clarification layer of a voice-to-code system. The user speaks an idea for a program, app, or script, and your ONLY job is to make sure the requirements are crystal clear before any code is generated.
 
 Rules:
-1. Read the user's idea carefully.
-2. If clear enough to build immediately, respond with EXACTLY:
+
+1. Read the user’s idea carefully.
+1. If clear enough to build immediately, respond with EXACTLY:
    READY TO BUILD
    [One-sentence summary]
-3. If ambiguous, ask 1-3 SHORT, specific clarifying questions. Number them.
-4. Conversational, encouraging tone. User may not be technical.
-5. Never generate code. Never suggest architecture. Just clarify.
-6. After answers, either ask follow-ups or respond with READY TO BUILD format.
-7. Focus on: What does it do? Who uses it? What inputs/outputs? Requirements?
-8. Keep responses concise — they will be read aloud.`;
+1. If ambiguous, ask 1-3 SHORT, specific clarifying questions. Number them.
+1. Conversational, encouraging tone. User may not be technical.
+1. Never generate code. Never suggest architecture. Just clarify.
+1. After answers, either ask follow-ups or respond with READY TO BUILD format.
+1. Focus on: What does it do? Who uses it? What inputs/outputs? Requirements?
+1. Keep responses concise — they will be read aloud.`;
 
-  sendBtn.addEventListener('click',()=>{
-    const idea=finalText.trim();if(!idea||!apiKeyInput.value.trim())return;
-    startClarification(idea);
-  });
+sendBtn.addEventListener(‘click’,()=>{
+const idea=finalText.trim();if(!idea||!apiKeyInput.value.trim())return;
+startClarification(idea);
+});
 
-  async function startClarification(idea){
-    setStep(1);chatPanel.classList.remove('hidden');chatArea.innerHTML='';
-    conversationHistory=[];generateBtn.classList.add('hidden');
-    addMessage('user',idea);
-    conversationHistory.push({role:'user',content:'Here\'s my idea: '+idea});
-    const ld=addLoading();sendBtn.disabled=true;
-    try{
-      const reply=await callClaude(conversationHistory,CLARIFY_PROMPT);
-      ld.remove();addMessage('ai',reply);
-      conversationHistory.push({role:'assistant',content:reply});
-      speak(reply);
-      if(reply.includes('READY TO BUILD')){
-        clarifiedRequirements=reply;addMessage('system','Requirements confirmed!');
-        generateBtn.classList.remove('hidden');replyBar.classList.add('hidden');awaitingReply=false;
-      }else{replyBar.classList.remove('hidden');replyInput.focus();awaitingReply=true;}
-    }catch(err){ld.remove();showError('API error: '+err.message);}
-    chatArea.scrollTop=chatArea.scrollHeight;
-  }
+async function startClarification(idea){
+setStep(1);chatPanel.classList.remove(‘hidden’);chatArea.innerHTML=’’;
+conversationHistory=[];generateBtn.classList.add(‘hidden’);
+addMessage(‘user’,idea);
+conversationHistory.push({role:‘user’,content:’Here's my idea: ’+idea});
+const ld=addLoading();sendBtn.disabled=true;
+try{
+const reply=await callClaude(conversationHistory,CLARIFY_PROMPT);
+ld.remove();addMessage(‘ai’,reply);
+conversationHistory.push({role:‘assistant’,content:reply});
+speak(reply);
+if(reply.includes(‘READY TO BUILD’)){
+clarifiedRequirements=reply;addMessage(‘system’,‘Requirements confirmed!’);
+generateBtn.classList.remove(‘hidden’);replyBar.classList.add(‘hidden’);awaitingReply=false;
+}else{replyBar.classList.remove(‘hidden’);replyInput.focus();awaitingReply=true;}
+}catch(err){ld.remove();showError(’API error: ’+err.message);}
+chatArea.scrollTop=chatArea.scrollHeight;
+}
 
-  async function sendReply(){
-    const text=replyInput.value.trim();if(!text||!awaitingReply)return;
-    replyInput.value='';if(replyVoice.isListening())replyVoice.stop();
-    addMessage('user',text);conversationHistory.push({role:'user',content:text});
-    const ld=addLoading();replyBar.classList.add('hidden');
-    try{
-      const reply=await callClaude(conversationHistory,CLARIFY_PROMPT);
-      ld.remove();addMessage('ai',reply);conversationHistory.push({role:'assistant',content:reply});
-      speak(reply);
-      if(reply.includes('READY TO BUILD')){
-        clarifiedRequirements=reply;addMessage('system','Requirements confirmed!');
-        generateBtn.classList.remove('hidden');awaitingReply=false;
-      }else{replyBar.classList.remove('hidden');replyInput.focus();awaitingReply=true;}
-    }catch(err){ld.remove();showError('API error: '+err.message);replyBar.classList.remove('hidden');}
-    chatArea.scrollTop=chatArea.scrollHeight;
-  }
-  replySend.addEventListener('click',sendReply);
-  replyInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendReply();});
+async function sendReply(){
+const text=replyInput.value.trim();if(!text||!awaitingReply)return;
+replyInput.value=’’;if(replyVoice.isListening())replyVoice.stop();
+addMessage(‘user’,text);conversationHistory.push({role:‘user’,content:text});
+const ld=addLoading();replyBar.classList.add(‘hidden’);
+try{
+const reply=await callClaude(conversationHistory,CLARIFY_PROMPT);
+ld.remove();addMessage(‘ai’,reply);conversationHistory.push({role:‘assistant’,content:reply});
+speak(reply);
+if(reply.includes(‘READY TO BUILD’)){
+clarifiedRequirements=reply;addMessage(‘system’,‘Requirements confirmed!’);
+generateBtn.classList.remove(‘hidden’);awaitingReply=false;
+}else{replyBar.classList.remove(‘hidden’);replyInput.focus();awaitingReply=true;}
+}catch(err){ld.remove();showError(’API error: ’+err.message);replyBar.classList.remove(‘hidden’);}
+chatArea.scrollTop=chatArea.scrollHeight;
+}
 
-  // ===== CODE GENERATION =====
-  const CODE_PROMPT=`You are the code generation layer of a voice-to-code system. Given clarified requirements, generate the COMPLETE implementation.
+replySend.addEventListener(‘click’,sendReply);
+replyInput.addEventListener(‘keydown’,e=>{if(e.key===‘Enter’)sendReply();});
+
+// ===== CODE GENERATION =====
+const CODE_PROMPT=`You are the code generation layer of a voice-to-code system. Given clarified requirements, generate the COMPLETE implementation.
 
 CRITICAL: Your entire response must be valid JSON. No text before or after. No markdown fences.
 
 Output format:
-{"files":[{"name":"filename.ext","description":"Purpose","language":"html","content":"file contents"}],"summary":"One sentence summary"}
+{“files”:[{“name”:“filename.ext”,“description”:“Purpose”,“language”:“html”,“content”:“file contents”}],“summary”:“One sentence summary”}
 
 Rules:
+
 1. Generate complete, working, production-quality code.
-2. Include ALL necessary files.
-3. Modern best practices, clean style, helpful comments.
-4. For web projects: work by opening HTML directly (no build step).
-5. Code must be immediately runnable.
-6. Escape special characters properly in JSON strings.`;
+1. Include ALL necessary files.
+1. Modern best practices, clean style, helpful comments.
+1. For web projects: work by opening HTML directly (no build step).
+1. Code must be immediately runnable.
+1. Escape special characters properly in JSON strings.`;
 
-  generateBtn.addEventListener('click',startCodeGen);
+generateBtn.addEventListener(‘click’,startCodeGen);
 
-  async function startCodeGen(){
-    setStep(2);generateBtn.classList.add('hidden');
-    codePanel.classList.remove('hidden');codeOutput.classList.add('hidden');
-    genProgress.classList.remove('hidden');genStatus.classList.remove('hidden');
-    genStatus.textContent='Claude is writing your code…';genProgressBar.style.width='20%';
-    downloadPanel.classList.add('hidden');
-    speak('Generating your code now. This may take a moment.');
+async function startCodeGen(){
+setStep(2);generateBtn.classList.add(‘hidden’);
+codePanel.classList.remove(‘hidden’);codeOutput.classList.add(‘hidden’);
+genProgress.classList.remove(‘hidden’);genStatus.classList.remove(‘hidden’);
+genStatus.textContent=‘Claude is writing your code…’;genProgressBar.style.width=‘20%’;
+downloadPanel.classList.add(‘hidden’);
+speak(‘Generating your code now. This may take a moment.’);
 
-    const ctx=conversationHistory.map(m=>m.role+': '+m.content).join('\n');
-    codeGenHistory=[{role:'user',content:`Clarified requirements:\n\n${ctx}\n\nFinal: ${clarifiedRequirements}\n\nGenerate the complete code. Respond with ONLY valid JSON.`}];
-    genProgressBar.style.width='50%';
+const ctx=conversationHistory.map(m=>m.role+’: ‘+m.content).join(’\n’);
+codeGenHistory=[{role:‘user’,content:`Clarified requirements:\n\n${ctx}\n\nFinal: ${clarifiedRequirements}\n\nGenerate the complete code. Respond with ONLY valid JSON.`}];
+genProgressBar.style.width=‘50%’;
 
-    try{
-      const raw=await callClaude(codeGenHistory,CODE_PROMPT,8192);
-      genProgressBar.style.width='90%';codeGenHistory.push({role:'assistant',content:raw});
-      let parsed;
-      try{let j=raw.trim();if(j.startsWith('```'))j=j.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'');parsed=JSON.parse(j);}
-      catch(e){const m=raw.match(/\{[\s\S]*"files"[\s\S]*\}/);if(m)parsed=JSON.parse(m[0]);else throw new Error('Could not parse code output.');}
-      generatedFiles=parsed.files||[];genProgressBar.style.width='100%';
-      setTimeout(()=>{
-        genProgress.classList.add('hidden');genStatus.textContent=parsed.summary||'Code generated!';
-        activeFileIdx=0;renderFiles();codeOutput.classList.remove('hidden');setStep(3);
-        speak('Your code is ready. Review it and approve when you\'re happy with it, or request a tweak.');
-      },400);
-    }catch(err){genProgress.classList.add('hidden');genStatus.classList.add('hidden');showError('Code gen error: '+err.message);}
-  }
+try{
+const raw=await callClaude(codeGenHistory,CODE_PROMPT,8192);
+genProgressBar.style.width=‘90%’;codeGenHistory.push({role:‘assistant’,content:raw});
+let parsed;
+try{let j=raw.trim();if(j.startsWith(’`'))j=j.replace(/^`(?:json)?\s*/,’’).replace(/\s*```$/,’’);parsed=JSON.parse(j);}
+catch(e){const m=raw.match(/{[\s\S]*“files”[\s\S]*}/);if(m)parsed=JSON.parse(m[0]);else throw new Error(‘Could not parse code output.’);}
+generatedFiles=parsed.files||[];genProgressBar.style.width=‘100%’;
+setTimeout(()=>{
+genProgress.classList.add(‘hidden’);genStatus.textContent=parsed.summary||‘Code generated!’;
+activeFileIdx=0;renderFiles();codeOutput.classList.remove(‘hidden’);setStep(3);
+speak(‘Your code is ready. Review it and approve when you're happy with it, or request a tweak.’);
+},400);
+}catch(err){genProgress.classList.add(‘hidden’);genStatus.classList.add(‘hidden’);showError(’Code gen error: ’+err.message);}
+}
 
-  function renderFiles(){
-    fileTabs.innerHTML='';
-    generatedFiles.forEach((f,i)=>{
-      const tab=document.createElement('button');tab.className='file-tab'+(i===activeFileIdx?' active':'');
-      tab.textContent=f.name;tab.addEventListener('click',()=>{activeFileIdx=i;renderFiles();});
-      fileTabs.appendChild(tab);
-    });
-    const f=generatedFiles[activeFileIdx];
-    if(f){fileDesc.textContent=f.description||'';codeContent.textContent=f.content;codeContent.className='';
-      if(f.language)codeContent.classList.add('language-'+f.language);hljs.highlightElement(codeContent);}
-  }
+function renderFiles(){
+fileTabs.innerHTML=’’;
+generatedFiles.forEach((f,i)=>{
+const tab=document.createElement(‘button’);tab.className=‘file-tab’+(i===activeFileIdx?’ active’:’’);
+tab.textContent=f.name;tab.addEventListener(‘click’,()=>{activeFileIdx=i;renderFiles();});
+fileTabs.appendChild(tab);
+});
+const f=generatedFiles[activeFileIdx];
+if(f){fileDesc.textContent=f.description||’’;codeContent.textContent=f.content;codeContent.className=’’;
+if(f.language)codeContent.classList.add(‘language-’+f.language);hljs.highlightElement(codeContent);}
+}
 
-  // ===== REVIEW & TWEAK =====
-  approveBtn.addEventListener('click',()=>{
-    setStep(4);downloadPanel.classList.remove('hidden');downloadLinks.innerHTML='';tweakBar.classList.add('hidden');
-    generatedFiles.forEach(f=>{
-      const blob=new Blob([f.content],{type:'text/plain'});const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.className='dl-link';a.href=url;a.download=f.name;a.textContent=f.name;
-      downloadLinks.appendChild(a);
-    });
-    // Save project (Layer 5)
-    saveProject();
-    speak('Project approved and saved! You can download your files now.');
-    downloadPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
-  });
+// ===== REVIEW & TWEAK =====
+// Track blob URLs for cleanup
+let activeBlobURLs=[];
+approveBtn.addEventListener(‘click’,()=>{
+setStep(4);downloadPanel.classList.remove(‘hidden’);downloadLinks.innerHTML=’’;tweakBar.classList.add(‘hidden’);
+// Clean up previous blob URLs
+activeBlobURLs.forEach(u=>URL.revokeObjectURL(u));activeBlobURLs=[];
+generatedFiles.forEach(f=>{
+const blob=new Blob([f.content],{type:‘text/plain’});const url=URL.createObjectURL(blob);
+activeBlobURLs.push(url);
+const a=document.createElement(‘a’);a.className=‘dl-link’;a.href=url;a.download=f.name;a.textContent=f.name;
+a.addEventListener(‘click’,()=>{setTimeout(()=>URL.revokeObjectURL(url),1000);});
+downloadLinks.appendChild(a);
+});
+saveProject();
+speak(‘Project approved and saved! You can download your files now.’);
+downloadPanel.scrollIntoView({behavior:‘smooth’,block:‘nearest’});
+});
 
-  tweakBtn.addEventListener('click',()=>{tweakBar.classList.toggle('hidden');if(!tweakBar.classList.contains('hidden'))tweakInput.focus();});
+tweakBtn.addEventListener(‘click’,()=>{tweakBar.classList.toggle(‘hidden’);if(!tweakBar.classList.contains(‘hidden’))tweakInput.focus();});
 
-  async function sendTweak(){
-    const text=tweakInput.value.trim();if(!text)return;
-    tweakInput.value='';if(tweakVoice.isListening())tweakVoice.stop();
-    tweakBar.classList.add('hidden');genProgress.classList.remove('hidden');genStatus.classList.remove('hidden');
-    genStatus.textContent='Applying your tweak…';genProgressBar.style.width='30%';codeOutput.classList.add('hidden');
-    speak('Applying your changes now.');
-    codeGenHistory.push({role:'user',content:`Modify the code: "${text}"\nKeep existing functionality. Respond with SAME JSON format. ONLY valid JSON.`});
-    genProgressBar.style.width='60%';
-    try{
-      const raw=await callClaude(codeGenHistory,CODE_PROMPT,8192);
-      codeGenHistory.push({role:'assistant',content:raw});genProgressBar.style.width='90%';
-      let parsed;
-      try{let j=raw.trim();if(j.startsWith('```'))j=j.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'');parsed=JSON.parse(j);}
-      catch(e){const m=raw.match(/\{[\s\S]*"files"[\s\S]*\}/);if(m)parsed=JSON.parse(m[0]);else throw new Error('Could not parse tweaked code.');}
-      generatedFiles=parsed.files||[];genProgressBar.style.width='100%';
-      setTimeout(()=>{genProgress.classList.add('hidden');genStatus.textContent='Tweak applied!';
-        activeFileIdx=0;renderFiles();codeOutput.classList.remove('hidden');downloadPanel.classList.add('hidden');
-        speak('Tweak applied. Take a look and let me know if you want more changes.');
-      },300);
-    }catch(err){genProgress.classList.add('hidden');genStatus.classList.add('hidden');codeOutput.classList.remove('hidden');showError('Tweak error: '+err.message);}
-  }
-  tweakSend.addEventListener('click',sendTweak);
-  tweakInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendTweak();});
+async function sendTweak(){
+const text=tweakInput.value.trim();if(!text)return;
+tweakInput.value=’’;if(tweakVoice.isListening())tweakVoice.stop();
+tweakBar.classList.add(‘hidden’);genProgress.classList.remove(‘hidden’);genStatus.classList.remove(‘hidden’);
+genStatus.textContent=‘Applying your tweak…’;genProgressBar.style.width=‘30%’;codeOutput.classList.add(‘hidden’);
+speak(‘Applying your changes now.’);
+codeGenHistory.push({role:‘user’,content:`Modify the code: "${text}"\nKeep existing functionality. Respond with SAME JSON format. ONLY valid JSON.`});
+genProgressBar.style.width=‘60%’;
+try{
+const raw=await callClaude(codeGenHistory,CODE_PROMPT,8192);
+codeGenHistory.push({role:‘assistant’,content:raw});genProgressBar.style.width=‘90%’;
+let parsed;
+try{let j=raw.trim();if(j.startsWith(’`'))j=j.replace(/^`(?:json)?\s*/,’’).replace(/\s*```$/,’’);parsed=JSON.parse(j);}
+catch(e){const m=raw.match(/{[\s\S]*“files”[\s\S]*}/);if(m)parsed=JSON.parse(m[0]);else throw new Error(‘Could not parse tweaked code.’);}
+generatedFiles=parsed.files||[];genProgressBar.style.width=‘100%’;
+setTimeout(()=>{genProgress.classList.add(‘hidden’);genStatus.textContent=‘Tweak applied!’;
+activeFileIdx=0;renderFiles();codeOutput.classList.remove(‘hidden’);downloadPanel.classList.add(‘hidden’);
+speak(‘Tweak applied. Take a look and let me know if you want more changes.’);
+},300);
+}catch(err){genProgress.classList.add(‘hidden’);genStatus.classList.add(‘hidden’);codeOutput.classList.remove(‘hidden’);showError(’Tweak error: ’+err.message);}
+}
 
-  downloadAllBtn.addEventListener('click',()=>{
-    generatedFiles.forEach(f=>{const b=new Blob([f.content],{type:'text/plain'});const u=URL.createObjectURL(b);
-      const a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
-    });
-  });
+tweakSend.addEventListener(‘click’,sendTweak);
+tweakInput.addEventListener(‘keydown’,e=>{if(e.key===‘Enter’)sendTweak();});
 
-  // ===== LAYER 5: PROJECT STORAGE (IndexedDB) =====
-  let db=null;
-  const DB_NAME='VoiceToCodeProjects',DB_VER=1,STORE='projects';
+downloadAllBtn.addEventListener(‘click’,()=>{
+generatedFiles.forEach(f=>{const b=new Blob([f.content],{type:‘text/plain’});const u=URL.createObjectURL(b);
+const a=document.createElement(‘a’);a.href=u;a.download=f.name;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+});
+});
 
-  function openDB(){
-    return new Promise((resolve,reject)=>{
-      const req=indexedDB.open(DB_NAME,DB_VER);
-      req.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});};
-      req.onsuccess=e=>{db=e.target.result;resolve(db);};
-      req.onerror=e=>reject(e);
-    });
-  }
+// ===== LAYER 5: PROJECT STORAGE (IndexedDB) =====
+let db=null;
+const DB_NAME=‘VoiceToCodeProjects’,DB_VER=1,STORE=‘projects’;
 
-  function saveProject(){
-    if(!db)return;
-    const project={
-      name:clarifiedRequirements.replace(/READY TO BUILD\s*/,'').slice(0,80).trim()||'Untitled',
-      files:generatedFiles,
-      conversation:conversationHistory,
-      codeHistory:codeGenHistory,
-      timestamp:Date.now()
-    };
-    const tx=db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).add(project);
-    tx.oncomplete=()=>loadProjects();
-  }
+function openDB(){
+return new Promise((resolve,reject)=>{
+const req=indexedDB.open(DB_NAME,DB_VER);
+req.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:‘id’,autoIncrement:true});};
+req.onsuccess=e=>{db=e.target.result;resolve(db);};
+req.onerror=e=>reject(e);
+});
+}
 
-  function loadProjects(){
-    if(!db)return;
-    const tx=db.transaction(STORE,'readonly');
-    const req=tx.objectStore(STORE).getAll();
-    req.onsuccess=()=>{
-      savedProjects=req.result.sort((a,b)=>b.timestamp-a.timestamp);
-      renderProjects();
-    };
-  }
+function saveProject(){
+if(!db)return;
+const project={
+name:clarifiedRequirements.replace(/READY TO BUILD\s*/,’’).slice(0,80).trim()||‘Untitled’,
+files:generatedFiles,
+conversation:conversationHistory,
+codeHistory:codeGenHistory,
+timestamp:Date.now()
+};
+const tx=db.transaction(STORE,‘readwrite’);
+tx.objectStore(STORE).add(project);
+tx.oncomplete=()=>loadProjects();
+}
 
-  function renderProjects(){
-    projectsList.innerHTML='';
-    if(!savedProjects.length){
-      projectsList.innerHTML='<span class="placeholder">No saved projects yet</span>';
-      return;
-    }
-    savedProjects.forEach(p=>{
-      const chip=document.createElement('div');chip.className='project-chip';
-      const ago=timeAgo(p.timestamp);
-      chip.innerHTML=`<span>${escHtml(p.name.slice(0,40))}</span><span class="proj-time">${ago}</span>`;
-      chip.addEventListener('click',()=>loadProject(p));
+function loadProjects(){
+if(!db)return;
+const tx=db.transaction(STORE,‘readonly’);
+const req=tx.objectStore(STORE).getAll();
+req.onsuccess=()=>{
+savedProjects=req.result.sort((a,b)=>b.timestamp-a.timestamp);
+renderProjects();
+};
+}
 
-      const del=document.createElement('span');del.className='proj-delete';del.textContent='✕';
-      del.addEventListener('click',ev=>{ev.stopPropagation();deleteProject(p.id);});
-      chip.appendChild(del);
+function renderProjects(){
+projectsList.innerHTML=’’;
+if(!savedProjects.length){
+projectsList.innerHTML=’<span class="placeholder">No saved projects yet</span>’;
+return;
+}
+savedProjects.forEach(p=>{
+const chip=document.createElement(‘div’);chip.className=‘project-chip’;
+const ago=timeAgo(p.timestamp);
+chip.innerHTML=`<span>${escHtml(p.name.slice(0,40))}</span><span class="proj-time">${ago}</span>`;
+chip.addEventListener(‘click’,()=>loadProject(p));
+const del=document.createElement(‘span’);del.className=‘proj-delete’;del.textContent=‘✕’;
+del.addEventListener(‘click’,ev=>{ev.stopPropagation();deleteProject(p.id);});
+chip.appendChild(del);
+projectsList.appendChild(chip);
+});
+}
 
-      projectsList.appendChild(chip);
-    });
-  }
+function loadProject(p){
+fullReset();
+conversationHistory=p.conversation||[];
+codeGenHistory=p.codeHistory||[];
+generatedFiles=p.files||[];
+clarifiedRequirements=p.name;
+if(generatedFiles.length){
+codePanel.classList.remove(‘hidden’);codeOutput.classList.remove(‘hidden’);
+genStatus.classList.remove(‘hidden’);genStatus.textContent=’Loaded: ’+p.name;
+activeFileIdx=0;renderFiles();setStep(3);
+speak(’Loaded your project: ’+p.name);
+}
+if(conversationHistory.length){
+chatPanel.classList.remove(‘hidden’);
+conversationHistory.forEach(m=>{
+if(m.role===‘user’)addMessage(‘user’,m.content);
+else addMessage(‘ai’,m.content);
+});
+}
+}
 
-  function loadProject(p){
-    fullReset();
-    // Restore state
-    conversationHistory=p.conversation||[];
-    codeGenHistory=p.codeHistory||[];
-    generatedFiles=p.files||[];
-    clarifiedRequirements=p.name;
+function deleteProject(id){
+if(!db)return;
+const tx=db.transaction(STORE,‘readwrite’);
+tx.objectStore(STORE).delete(id);
+tx.oncomplete=()=>loadProjects();
+}
 
-    if(generatedFiles.length){
-      codePanel.classList.remove('hidden');codeOutput.classList.remove('hidden');
-      genStatus.classList.remove('hidden');genStatus.textContent='Loaded: '+p.name;
-      activeFileIdx=0;renderFiles();setStep(3);
-      speak('Loaded your project: '+p.name);
-    }
-    if(conversationHistory.length){
-      chatPanel.classList.remove('hidden');
-      conversationHistory.forEach(m=>{
-        if(m.role==='user')addMessage('user',m.content);
-        else addMessage('ai',m.content);
-      });
-    }
-  }
+clearProjectsBtn.addEventListener(‘click’,()=>{
+if(!db)return;
+const tx=db.transaction(STORE,‘readwrite’);
+tx.objectStore(STORE).clear();
+tx.oncomplete=()=>loadProjects();
+});
 
-  function deleteProject(id){
-    if(!db)return;
-    const tx=db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).delete(id);
-    tx.oncomplete=()=>loadProjects();
-  }
+function timeAgo(ts){
+const s=Math.floor((Date.now()-ts)/1000);
+if(s<60)return ‘just now’;
+if(s<3600)return Math.floor(s/60)+‘m ago’;
+if(s<86400)return Math.floor(s/3600)+‘h ago’;
+return Math.floor(s/86400)+‘d ago’;
+}
+function escHtml(s){return s.replace(/&/g,’&’).replace(/</g,’<’).replace(/>/g,’>’);}
 
-  clearProjectsBtn.addEventListener('click',()=>{
-    if(!db)return;
-    const tx=db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).clear();
-    tx.oncomplete=()=>loadProjects();
-  });
+// ===== RESET =====
+function fullReset(){
+chatPanel.classList.add(‘hidden’);replyBar.classList.add(‘hidden’);
+generateBtn.classList.add(‘hidden’);codePanel.classList.add(‘hidden’);
+downloadPanel.classList.add(‘hidden’);tweakBar.classList.add(‘hidden’);
+chatArea.innerHTML=’’;conversationHistory=[];codeGenHistory=[];
+awaitingReply=false;generatedFiles=[];activeFileIdx=0;finalText=’’;clarifiedRequirements=’’;
+transcriptEl.innerHTML=’<span class="placeholder">Your words will appear here…</span>’;
+updateSendBtn();statusEl.textContent=‘Tap the mic and speak your idea’;
+genStatus.classList.add(‘hidden’);setStep(0);hideError();
+if(synth)synth.cancel();speakingIndicator.classList.remove(‘active’);
+}
+resetChat.addEventListener(‘click’,fullReset);
+resetChat2.addEventListener(‘click’,fullReset);
 
-  function timeAgo(ts){
-    const s=Math.floor((Date.now()-ts)/1000);
-    if(s<60)return 'just now';
-    if(s<3600)return Math.floor(s/60)+'m ago';
-    if(s<86400)return Math.floor(s/3600)+'h ago';
-    return Math.floor(s/86400)+'d ago';
-  }
+// ===== CLAUDE API =====
+async function callClaude(messages,systemPrompt,maxTokens,_retries){
+const apiKey=apiKeyInput.value.trim();
+if(!apiKey)throw new Error(‘No API key provided’);
+// Offline check
+if(!navigator.onLine)throw new Error(‘You appear to be offline. Check your connection and try again.’);
+// Timeout: 30s for clarification, 90s for code gen
+const timeoutMs=(maxTokens&&maxTokens>2000)?90000:30000;
+const controller=new AbortController();
+const timer=setTimeout(()=>controller.abort(),timeoutMs);
+try{
+const r=await fetch(‘https://api.anthropic.com/v1/messages’,{
+method:‘POST’,signal:controller.signal,
+headers:{‘Content-Type’:‘application/json’,‘x-api-key’:apiKey,‘anthropic-version’:‘2023-06-01’,‘anthropic-dangerous-direct-browser-access’:‘true’},
+body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:maxTokens||1024,system:systemPrompt,messages})
+});
+clearTimeout(timer);
+// Rate limit retry (max 2 retries)
+if(r.status===429&&(!_retries||_retries<2)){
+const wait=parseInt(r.headers.get(‘retry-after’)||‘5’)*1000;
+await new Promise(res=>setTimeout(res,Math.min(wait,15000)));
+return callClaude(messages,systemPrompt,maxTokens,(_retries||0)+1);
+}
+if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${r.status}`);}
+const d=await r.json();return d.content[0].text;
+}catch(err){
+clearTimeout(timer);
+if(err.name===‘AbortError’)throw new Error(‘Request timed out. Try again or check your connection.’);
+throw err;
+}
+}
 
-  function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// ===== UI HELPERS =====
+function addMessage(type,text){
+const div=document.createElement(‘div’);div.className=‘msg ‘+type;
+const label=document.createElement(‘div’);label.className=‘label’;
+label.textContent=type===‘ai’?‘Claude’:type===‘user’?‘You’:’’;
+const body=document.createElement(‘div’);body.textContent=text;
+if(type!==‘system’)div.appendChild(label);
+div.appendChild(body);chatArea.appendChild(div);chatArea.scrollTop=chatArea.scrollHeight;return div;
+}
+function addLoading(){
+const div=document.createElement(‘div’);div.className=‘msg ai loading-dots’;
+div.innerHTML=’<span></span><span></span><span></span>’;
+chatArea.appendChild(div);chatArea.scrollTop=chatArea.scrollHeight;return div;
+}
+function showError(msg){errorEl.textContent=msg;errorEl.classList.add(‘visible’);}
+function hideError(){errorEl.classList.remove(‘visible’);}
 
-  // ===== RESET =====
-  function fullReset(){
-    chatPanel.classList.add('hidden');replyBar.classList.add('hidden');
-    generateBtn.classList.add('hidden');codePanel.classList.add('hidden');
-    downloadPanel.classList.add('hidden');tweakBar.classList.add('hidden');
-    chatArea.innerHTML='';conversationHistory=[];codeGenHistory=[];
-    awaitingReply=false;generatedFiles=[];activeFileIdx=0;finalText='';clarifiedRequirements='';
-    transcriptEl.innerHTML='<span class="placeholder">Your words will appear here…</span>';
-    updateSendBtn();statusEl.textContent='Tap the mic and speak your idea';
-    genStatus.classList.add('hidden');setStep(0);hideError();
-    if(synth)synth.cancel();speakingIndicator.classList.remove('active');
-  }
-  resetChat.addEventListener('click',fullReset);
-  resetChat2.addEventListener('click',fullReset);
-
-  // ===== CLAUDE API =====
-  async function callClaude(messages,systemPrompt,maxTokens){
-    const apiKey=apiKeyInput.value.trim();
-    if(!apiKey)throw new Error('No API key provided');
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTokens||1024,system:systemPrompt,messages})
-    });
-    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${r.status}`);}
-    const d=await r.json();return d.content[0].text;
-  }
-
-  // ===== UI HELPERS =====
-  function addMessage(type,text){
-    const div=document.createElement('div');div.className='msg '+type;
-    const label=document.createElement('div');label.className='label';
-    label.textContent=type==='ai'?'Claude':type==='user'?'You':'';
-    const body=document.createElement('div');body.textContent=text;
-    if(type!=='system')div.appendChild(label);
-    div.appendChild(body);chatArea.appendChild(div);chatArea.scrollTop=chatArea.scrollHeight;return div;
-  }
-  function addLoading(){
-    const div=document.createElement('div');div.className='msg ai loading-dots';
-    div.innerHTML='<span></span><span></span><span></span>';
-    chatArea.appendChild(div);chatArea.scrollTop=chatArea.scrollHeight;return div;
-  }
-  function showError(msg){errorEl.textContent=msg;errorEl.classList.add('visible');}
-  function hideError(){errorEl.classList.remove('visible');}
-
-  // ===== INIT =====
-  setStep(0);
-  openDB().then(()=>loadProjects()).catch(()=>{});
+// ===== INIT =====
+setStep(0);
+openDB().then(()=>loadProjects()).catch(()=>{});
 })();
 </script>
+
 </body>
 </html>
